@@ -1,7 +1,7 @@
 import multiprocessing as mp
-import pygame, os, multiprocessing
-origin_folder = os.getcwd()
+import pygame, os
 from flappy_game import flappy
+origin_folder = os.getcwd()
 os.chdir("./flappy_game")
 
 # Game constants
@@ -16,16 +16,19 @@ Y_GRAVITY = 1
 def initialize_game(conn):
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    stdout = flappy.StdOutput(conn)
+    stdout = flappy.StdInOut(conn)
     flappy.main(screen, stdout, 1)
 
 parent_conn, child_conn = mp.Pipe()
 p = mp.Process(target=initialize_game, args=(child_conn,))
 p.start()
 while p.is_alive():
+    parent_conn.send({'bump': True})
     print(parent_conn.recv())
-    parent_conn.close()
-p.join()
+
+
+
+
 
 
 

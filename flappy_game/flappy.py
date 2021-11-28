@@ -121,7 +121,7 @@ class Score():
                 
         surface.blit(score_surface, (self.left, self.top))
 
-class StdOutput():
+class StdInOut():
 
     def __init__(self, conn = None):
         self.bird = { 
@@ -159,6 +159,12 @@ class StdOutput():
     def saveScore(self, score_input):
         self.score['points'] = score_input.points
         self.score['attempts'] = score_input.attempt
+
+    def receiveBump(self):
+        if self.conn is not None:
+            obj = self.conn.recv()
+            return obj['bump']
+                
 
     def json_serialized_out(self):
         obj = {
@@ -216,7 +222,9 @@ def main(screen, stdoutput, attempt):
             if event.type == KEYDOWN:
                 if event.key == K_SPACE:
                     bird.bump()
-                
+        
+        if stdoutput.receiveBump():
+            bird.bump()
                     
 
         screen.blit(BACKGROUND, (0, 0))
@@ -265,13 +273,16 @@ def main(screen, stdoutput, attempt):
         if ((pipe_group.sprites()[0]).rect[0] == 100):
             score.points += 1
     
+    # Quitting game
     pygame.quit()
     sys.exit()
+
+
 # Start the game
 
 if __name__ == '__main__': 
     pygame.init()
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-    stdout = StdOutput()
+    stdout = StdInOut()
 
     main(screen, stdout, 1)
