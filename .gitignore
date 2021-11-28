@@ -1,2 +1,3 @@
-__pycache__
+__pycache__/
 __pycache__/*
+flappy_game/__pycache__/*
