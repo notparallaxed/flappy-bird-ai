@@ -1,4 +1,4 @@
-import pygame, random
+import pygame, random, json
 from pygame.draw import rect
 from pygame.locals import *
 from pygame.surface import Surface
@@ -120,7 +120,51 @@ class Score():
         score_surface.blit(attempts_text_surface, (xpos_attemps,30))
                 
         surface.blit(score_surface, (self.left, self.top))
-        
+
+class StdOutput():
+
+    def __init__(self):
+        self.bird = { 
+            'size': (0,0),
+            'pos' : (0,0)
+            }
+        self.pipes = {
+            'top' : {
+                'size': (0,0),
+                'pos' : (0,0)
+            },
+            'bottom' : {
+                'size': (0,0),
+                'pos' : (0,0)
+            }
+        }
+        self.score = {
+            'points': 0,
+            'attempts': 0
+        }
+
+    def saveBird(self, bird_rect):
+        self.bird['size'] = bird_rect.size
+        self.bird['pos'] = bird_rect.topleft
+    
+    def savePipes(self, pipes_sprites):
+        top_pipe_rect = pipes_sprites[0].rect
+        bottom_pipe_rect = pipes_sprites[1].rect
+        self.pipes['top']['size'] = top_pipe_rect.size
+        self.pipes['top']['pos'] = top_pipe_rect.topleft
+        self.pipes['bottom']['size'] = bottom_pipe_rect.size
+        self.pipes['bottom']['pos'] = bottom_pipe_rect.topleft
+
+    def saveScore(self, score_input):
+        self.score['points'] = score_input.points
+        self.score['attempts'] = score_input.attempt
+
+    def json_serialized_out(self):
+        print(json.dumps({
+            'bird' : self.bird,
+            'pipes': self.pipes,
+            'score': self.score
+        }))
 
 # Game functions
 def is_off_screen(sprite):
@@ -133,7 +177,7 @@ def get_random_pipes(xpos):
     return (pipe, pipe_inverted)
 
 # Main game loop
-def main(screen, attempt):
+def main(screen, stdoutput, attempt):
     BACKGROUND = pygame.image.load('background-day.png')
     BACKGROUND = pygame.transform.scale(BACKGROUND, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -188,11 +232,17 @@ def main(screen, attempt):
         pipe_group.update()
 
         bird_group.draw(screen)
+        stdoutput.saveBird(bird_group.sprites()[0].rect)
+
         pipe_group.draw(screen)
+        stdoutput.savePipes(pipe_group.sprites())
+
         ground_group.draw(screen)
 
         score.draw(screen)
-
+        stdoutput.saveScore(score)
+        
+        stdoutput.json_serialized_out()
         pygame.display.update()
 
         # Verifica se houve colisão 
@@ -200,7 +250,7 @@ def main(screen, attempt):
         pygame.sprite.groupcollide(bird_group, pipe_group, False, False, pygame.sprite.collide_mask)):
             # Game over
             score.points = 0
-            main(screen, attempt + 1)
+            main(screen, stdoutput, attempt + 1)
 
         # Mark points in score
         if ((pipe_group.sprites()[0]).rect[0] == 100):
@@ -209,5 +259,6 @@ def main(screen, attempt):
 # Start the game
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+stdout = StdOutput()
 
-main(screen, 1)
+main(screen, stdout, 1)
