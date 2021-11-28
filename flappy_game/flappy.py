@@ -1,4 +1,4 @@
-import pygame, random, json
+import pygame, random, json, sys
 from pygame.draw import rect
 from pygame.locals import *
 from pygame.surface import Surface
@@ -123,7 +123,7 @@ class Score():
 
 class StdOutput():
 
-    def __init__(self):
+    def __init__(self, conn = None):
         self.bird = { 
             'size': (0,0),
             'pos' : (0,0)
@@ -142,6 +142,7 @@ class StdOutput():
             'points': 0,
             'attempts': 0
         }
+        self.conn = conn
 
     def saveBird(self, bird_rect):
         self.bird['size'] = bird_rect.size
@@ -160,11 +161,16 @@ class StdOutput():
         self.score['attempts'] = score_input.attempt
 
     def json_serialized_out(self):
-        print(json.dumps({
+        obj = {
             'bird' : self.bird,
             'pipes': self.pipes,
             'score': self.score
-        }))
+        }
+
+        if self.conn is not None:
+            self.conn.send(obj)
+            
+        print(json.dumps(obj))
 
 # Game functions
 def is_off_screen(sprite):
@@ -199,16 +205,19 @@ def main(screen, stdoutput, attempt):
         pipe_group.add(pipes[1])
 
     clock = pygame.time.Clock()
+    running = True
 
-    while True:
+    while running:
         clock.tick(30)
         for event in pygame.event.get():
             if event.type == QUIT:
-                pygame.quit()
+                running = False
 
             if event.type == KEYDOWN:
                 if event.key == K_SPACE:
                     bird.bump()
+                
+                    
 
         screen.blit(BACKGROUND, (0, 0))
 
@@ -255,10 +264,14 @@ def main(screen, stdoutput, attempt):
         # Mark points in score
         if ((pipe_group.sprites()[0]).rect[0] == 100):
             score.points += 1
-
+    
+    pygame.quit()
+    sys.exit()
 # Start the game
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-stdout = StdOutput()
 
-main(screen, stdout, 1)
+if __name__ == '__main__': 
+    pygame.init()
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    stdout = StdOutput()
+
+    main(screen, stdout, 1)
