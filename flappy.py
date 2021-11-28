@@ -1,6 +1,9 @@
 import pygame, random
+from pygame.draw import rect
 from pygame.locals import *
+from pygame.surface import Surface
 
+# Game constants
 SCREEN_WIDTH = 400
 SCREEN_HEIGHT = 800
 SPEED = 10
@@ -15,6 +18,7 @@ PIPE_HEIGHT = 500
 
 PIPE_GAP = 200
 
+# Game Elements
 class Bird(pygame.sprite.Sprite):
 
     def __init__(self):
@@ -40,7 +44,7 @@ class Bird(pygame.sprite.Sprite):
         self.image = self.images[ self.current_image ]
 
         self.speed += GRAVITY
-        print(self.rect[1]/10)
+        
 
         # Update height
         self.rect[1] += self.speed
@@ -87,6 +91,38 @@ class Ground(pygame.sprite.Sprite):
     def update(self):
         self.rect[0] -= GAME_SPEED
 
+class Score():
+
+    def __init__(self, attempt):
+        self.top = 10
+        self.left = 160
+        self.width = 120
+        self.height = 50
+        self.color = (255, 255, 255)
+        self.points_font = pygame.font.Font(pygame.font.get_default_font(), 36)
+        self.attempts_font = pygame.font.Font(pygame.font.get_default_font(), 18)
+
+        self.points = 0
+        self.attempt = attempt
+
+    def draw(self, surface):
+        # points
+        score_surface = pygame.Surface((self.width, self.height))
+        score_surface.fill(self.color)
+        points_text_surface = self.points_font.render(str(self.points), 1, (0, 0, 0))
+        xpos_points = (self.width - points_text_surface.get_size()[0])/2
+        score_surface.blit(points_text_surface, (xpos_points,2))
+
+        #attempts
+        attempts_text_surface = self.attempts_font.render(
+                                    "tentativa: "+ str(self.attempt), 1, (0, 0, 0))
+        xpos_attemps = (self.width - attempts_text_surface.get_size()[0])/2
+        score_surface.blit(attempts_text_surface, (xpos_attemps,30))
+                
+        surface.blit(score_surface, (self.left, self.top))
+        
+
+# Game functions
 def is_off_screen(sprite):
     return sprite.rect[0] < -(sprite.rect[2])
 
@@ -96,40 +132,12 @@ def get_random_pipes(xpos):
     pipe_inverted = Pipe(True, xpos, SCREEN_HEIGHT - size - PIPE_GAP)
     return (pipe, pipe_inverted)
 
-def update_score(sprite):
-     return sprite.rect[0] == 100
-
-
-def show_score(screen, score):
-    pygame.draw.rect(screen, (255, 255, 255), (160, 10, 100, 50))
-    font = pygame.font.Font(pygame.font.get_default_font(), 36)
-    text_surface = font.render(str(score), 1, (0, 0, 0))
-    if (score<10): 
-        screen.blit(text_surface, (200,20)) 
-    elif (score<100): 
-        screen.blit(text_surface, (190,20))
-    elif(score<1000):   
-         screen.blit(text_surface, (180,20))
-    else:
-         screen.blit(text_surface, (170,20))
-
-def show_attempt(attempt):
-    font = pygame.font.Font(pygame.font.get_default_font(),18)
-    text_surface = font.render("attempt:"+ str(attempt), 1, (255, 255, 255))
-    screen.blit(text_surface, (10,770))
-
-
-
-pygame.init()
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
-def main():
-
+# Main game loop
+def main(screen, attempt):
     BACKGROUND = pygame.image.load('background-day.png')
     BACKGROUND = pygame.transform.scale(BACKGROUND, (SCREEN_WIDTH, SCREEN_HEIGHT))
 
-    attempt = 0
-    score = 0
+    score = Score(attempt)
 
     bird_group = pygame.sprite.Group()
     bird = Bird()
@@ -183,19 +191,23 @@ def main():
         pipe_group.draw(screen)
         ground_group.draw(screen)
 
-        show_score(screen, score)
-        show_attempt(attempt)
+        score.draw(screen)
 
         pygame.display.update()
 
+        # Verifica se houve colisão 
         if (pygame.sprite.groupcollide(bird_group, ground_group, False, False, pygame.sprite.collide_mask) or
         pygame.sprite.groupcollide(bird_group, pipe_group, False, False, pygame.sprite.collide_mask)):
             # Game over
-            attempt +=1
-            score = 0
-            main()
-        
-        if (update_score(pipe_group.sprites()[0])):
-            score+=1
+            score.points = 0
+            main(screen, attempt + 1)
 
-main()
+        # Mark points in score
+        if ((pipe_group.sprites()[0]).rect[0] == 100):
+            score.points += 1
+
+# Start the game
+pygame.init()
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
+main(screen, 1)
