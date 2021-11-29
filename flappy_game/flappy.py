@@ -50,7 +50,8 @@ class Bird(pygame.sprite.Sprite):
         self.rect[1] += self.speed
     
     def bump(self):
-        self.speed = -SPEED
+        if self.rect[1] - 25 > 0:
+            self.speed = -SPEED
 
 class Pipe(pygame.sprite.Sprite):
 
@@ -224,7 +225,9 @@ def main(screen, stdoutput, attempt):
                     bird.bump()
         
         if stdoutput.receiveBump():
-            bird.bump()
+            press_space = pygame.event.Event(KEYDOWN)
+            press_space.key = K_SPACE
+            pygame.event.post(press_space)
                     
 
         screen.blit(BACKGROUND, (0, 0))
