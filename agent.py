@@ -54,7 +54,34 @@ class State():
         
         return False
 
-    #def has_colider():
+    def has_colider(self):
+        # Verify top pipes
+        x0pipe, y0pipe = self.sensor.metrics['pipes']['top']['pos']
+        x1pipe, y1pipe = tuple(map(sum, zip(self.sensor.metrics['pipes']['top']['size'],
+                                            self.sensor.metrics['pipes']['top']['pos'])))
+        x0block, y0block = self.block_position
+        x1block, y1block = tuple(map(sum, zip(self.block_position, self.block_size)))
+
+        if(x0pipe < x1block and y0pipe < y1block 
+            and x1pipe > x0block and y1pipe > y0block):
+            return True
+
+        # Verify bottom pipes
+        x0pipe, y0pipe = self.sensor.metrics['pipes']['bottom']['pos']
+        x1pipe, y1pipe = tuple(map(sum, zip(self.sensor.metrics['pipes']['bottom']['size'],
+                                            self.sensor.metrics['pipes']['bottom']['pos'])))
+        x0block, y0block = self.block_position
+        x1block, y1block = tuple(map(sum, zip(self.block_position, self.block_size)))
+
+        if(x0pipe < x1block and y0pipe < y1block 
+            and x1pipe > x0block and y1pipe > y0block):
+            return True
+
+        # Verify floor
+        if (y0block >= Y_FLOOR_POS):
+            return True    
+
+        return False
 
 actions = ["DO_BUMP", "DONT_BUMP"]
 
@@ -62,16 +89,16 @@ sensor = Sensor(parent_conn)
 
 BLOCK_SIZE = (40,25)
 states = {(i,j) : (State(sensor,BLOCK_SIZE, (200 + (j-1)*BLOCK_SIZE[0], (i-1)*BLOCK_SIZE[1]))) 
-                        for i in range(1,33) for j in range(1,6)} 
-                    
+                        for i in range(1,33) for j in range(1,6)}                 
 
-for i in range(1,33):
-    print(states[(i,1)].block_position,
-     "|", states[(i,2)].block_position,
-     "|", states[(i,3)].block_position, 
-     "|", states[(i,4)].block_position, 
-     "|", states[(i,5)].block_position, )
-        
+def item_draw(state):
+    if state.has_colider():
+        return "X"
+    elif state.has_bird():
+        return "@"
+    
+    return " "
+    
 # Run all
 p.start()
 while p.is_alive():
@@ -79,8 +106,8 @@ while p.is_alive():
     sensor.update()
 
     for i in range(1,33):
-        print(states[(i,1)].block_position, states[(i,1)].has_bird(),
-         "|", states[(i,2)].block_position, states[(i,2)].has_bird(),
-         "|", states[(i,3)].block_position, states[(i,3)].has_bird(), 
-         "|", states[(i,4)].block_position, states[(i,4)].has_bird(), 
-         "|", states[(i,5)].block_position, states[(i,5)].has_bird())
+        print(states[(i,1)].block_position, item_draw(states[(i,1)]),
+         "|", states[(i,2)].block_position, item_draw(states[(i,2)]), 
+         "|", states[(i,3)].block_position, item_draw(states[(i,3)]), 
+         "|", states[(i,4)].block_position, item_draw(states[(i,4)]), 
+         "|", states[(i,5)].block_position, item_draw(states[(i,5)]))
