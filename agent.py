@@ -1,5 +1,5 @@
 import multiprocessing as mp
-import pygame, os, random
+import pygame, os, math
 from flappy_game import flappy
 origin_folder = os.getcwd()
 os.chdir("./flappy_game")
@@ -33,81 +33,64 @@ class Sensor():
     def update(self):
         self.metrics = self.conn.recv()
 
-class State():
-    def __init__(self, sensor, size, position):
-        self.block_size = size
-        self.block_position = position
-        self.dist_colision = -1
-        self.reward = 0
-        self.sensor = sensor
+class Actuator():
+    def __init__(self, parent_conn):
+        self.conn = parent_conn
     
-    def has_bird(self):
-        x0bird, y0bird = self.sensor.metrics['bird']['pos'] 
-        x1bird, y1bird = tuple(map(sum, zip(self.sensor.metrics['bird']['pos'], 
-                                            self.sensor.metrics['bird']['size'])))               
-        x0block, y0block = self.block_position
-        x1block, y1block = tuple(map(sum, zip(self.block_position, self.block_size)))
+    def do_bump(self):
+        self.conn.send({'bump': True})
 
-        if(x0bird < x1block and y0bird < y1block 
-            and x1bird > x0block and y1bird > y0block):
-            return True
+    def dont_bump(self):
+        self.conn.send({'bump': False})
+
+def calculate_dist_bird_pipe(bird_pos, pipes_pos):
+    dist_bird_pipe_bot = math.dist(bird_pos, pipes_pos['bottom']['pos'])
+    dist_bird_pipe_top = math.dist(bird_pos, pipes_pos['top']['pos'])
+
+    return round((dist_bird_pipe_bot + dist_bird_pipe_top)/2)
+
+class State():
+    def __init__(self, bird_metrics, pipes_metrics):
+        self.bird_metrics = bird_metrics
+        self.pipes_metrics = pipes_metrics
         
-        return False
+        self.dist_bird_floor = (Y_FLOOR_POS - self.bird_metrics['pos'][1])
+        self.dist_bird_pipes = calculate_dist_bird_pipe(bird_metrics['pos'], pipes_metrics)
+        
+        self.actions_q_value = {
+            "DO_BUMP" : 0,
+            "DONT_BUMP" : 0
+        }
 
-    def has_colider(self):
-        # Verify top pipes
-        x0pipe, y0pipe = self.sensor.metrics['pipes']['top']['pos']
-        x1pipe, y1pipe = tuple(map(sum, zip(self.sensor.metrics['pipes']['top']['size'],
-                                            self.sensor.metrics['pipes']['top']['pos'])))
-        x0block, y0block = self.block_position
-        x1block, y1block = tuple(map(sum, zip(self.block_position, self.block_size)))
+        self.index = (bird_metrics['pos'][1], self.dist_bird_pipes, self.dist_bird_floor)
 
-        if(x0pipe < x1block and y0pipe < y1block 
-            and x1pipe > x0block and y1pipe > y0block):
-            return True
-
-        # Verify bottom pipes
-        x0pipe, y0pipe = self.sensor.metrics['pipes']['bottom']['pos']
-        x1pipe, y1pipe = tuple(map(sum, zip(self.sensor.metrics['pipes']['bottom']['size'],
-                                            self.sensor.metrics['pipes']['bottom']['pos'])))
-        x0block, y0block = self.block_position
-        x1block, y1block = tuple(map(sum, zip(self.block_position, self.block_size)))
-
-        if(x0pipe < x1block and y0pipe < y1block 
-            and x1pipe > x0block and y1pipe > y0block):
-            return True
-
-        # Verify floor
-        if (y0block >= Y_FLOOR_POS):
-            return True    
-
-        return False
-
-actions = ["DO_BUMP", "DONT_BUMP"]
+    def get_max_q_action(self):
+        if (self.actions_q_value['DO_BUMP'] > self.actions_q_value['DONT_BUMP']):
+            return 'DO_BUMP'
+        
+        return 'DONT_BUMP'
 
 sensor = Sensor(parent_conn)
+actuator = Actuator(parent_conn)                 
 
-BLOCK_SIZE = (40,25)
-states = {(i,j) : (State(sensor,BLOCK_SIZE, (200 + (j-1)*BLOCK_SIZE[0], (i-1)*BLOCK_SIZE[1]))) 
-                        for i in range(1,33) for j in range(1,6)}                 
-
-def item_draw(state):
-    if state.has_colider():
-        return "X"
-    elif state.has_bird():
-        return "@"
-    
-    return " "
-    
+states = []
+actual_state = None
 # Run all
 p.start()
 while p.is_alive():
-    parent_conn.send({'bump': False})
+    actuator.dont_bump()
     sensor.update()
 
-    for i in range(1,33):
-        print(states[(i,1)].block_position, item_draw(states[(i,1)]),
-         "|", states[(i,2)].block_position, item_draw(states[(i,2)]), 
-         "|", states[(i,3)].block_position, item_draw(states[(i,3)]), 
-         "|", states[(i,4)].block_position, item_draw(states[(i,4)]), 
-         "|", states[(i,5)].block_position, item_draw(states[(i,5)]))
+    dist_bird_pipes = calculate_dist_bird_pipe(sensor.metrics['bird']['pos'], 
+                                               sensor.metrics['pipes'])                                         
+    dist_bird_floor = (Y_FLOOR_POS - sensor.metrics['bird']['pos'][1])
+
+    if any(state.index == (sensor.metrics['bird']['pos'][1], 
+                            dist_bird_pipes, dist_bird_floor) for state in states):
+        actual_state = next(state.index == (sensor.metrics['bird']['pos'][1], 
+                            dist_bird_pipes, dist_bird_floor) for state in states)
+    else:
+        actual_state = State(sensor.metrics['bird'], sensor.metrics['pipes'])
+        states.append(actual_state)
+
+    print(states)
