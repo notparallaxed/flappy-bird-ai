@@ -176,7 +176,7 @@ class StdInOut():
         if self.conn is not None:
             self.conn.send(obj)
             
-        print(json.dumps(obj))
+        #print(json.dumps(obj))
 
 # Game functions
 def is_off_screen(sprite):
