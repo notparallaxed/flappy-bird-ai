@@ -54,7 +54,7 @@ class State():
         self.bird_metrics = bird_metrics
         self.pipes_metrics = pipes_metrics
         
-        self.dist_bird_floor = (Y_FLOOR_POS - self.bird_metrics['pos'][1])
+        #self.dist_bird_floor = (Y_FLOOR_POS - self.bird_metrics['pos'][1])
         self.dist_bird_pipes = calculate_dist_bird_pipe(bird_metrics['pos'], pipes_metrics)
         
         self.actions_q_value = {
@@ -62,7 +62,7 @@ class State():
             "DONT_BUMP" : 0
         }
 
-        self.index = (bird_metrics['pos'][1], self.dist_bird_pipes, self.dist_bird_floor)
+        self.index = (bird_metrics['pos'][1], self.dist_bird_pipes)
 
     def get_max_q_action(self):
         if (self.actions_q_value['DO_BUMP'] > self.actions_q_value['DONT_BUMP']):
@@ -73,8 +73,16 @@ class State():
 sensor = Sensor(parent_conn)
 actuator = Actuator(parent_conn)                 
 
+latest_points = 0
+latest_attempts = 1
+
+goals = [(latest_points + 1)]
+
+reward_history = []
+actual_reward = 0 
 states = []
 actual_state = None
+
 # Run all
 p.start()
 while p.is_alive():
@@ -83,14 +91,12 @@ while p.is_alive():
 
     dist_bird_pipes = calculate_dist_bird_pipe(sensor.metrics['bird']['pos'], 
                                                sensor.metrics['pipes'])                                         
-    dist_bird_floor = (Y_FLOOR_POS - sensor.metrics['bird']['pos'][1])
-
+    
     if any(state.index == (sensor.metrics['bird']['pos'][1], 
-                            dist_bird_pipes, dist_bird_floor) for state in states):
+                            dist_bird_pipes) for state in states):
         actual_state = next(state.index == (sensor.metrics['bird']['pos'][1], 
-                            dist_bird_pipes, dist_bird_floor) for state in states)
+                            dist_bird_pipes) for state in states)
     else:
         actual_state = State(sensor.metrics['bird'], sensor.metrics['pipes'])
         states.append(actual_state)
-
-    print(states)
+    
